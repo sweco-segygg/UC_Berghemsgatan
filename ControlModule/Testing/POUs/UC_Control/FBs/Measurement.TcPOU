@@ -1,0 +1,77 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.12">
+  <POU Name="Measurement" Id="{96085919-b7d7-4e5c-b437-b7d7cab59ed0}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK Measurement
+VAR_INPUT
+	bPuls				: BOOL;
+	diVperPuls			: DINT:= 10;	(*	Vad en puls är värd tex. 10 liter	*)
+	diKorrFakt			: DINT:= 1000;	(*	Korrigeringsfaktor tex. pulserna är värde 10 liter men visningen ska vara m3 så ska denna faktor vara 1000	*)
+END_VAR
+VAR_OUTPUT
+	diTotalForbrukning	: DINT;			(*	Den Totala Förbrukningen på Mätaren	*)
+	diForbrukningManad	: DINT;			(*	Förbrukningen denna Månad	*)
+	diForbrukningForra	: DINT;			(*	Förbrukningen Föregående Månad	*)
+END_VAR
+VAR_IN_OUT
+	diAktV				: DINT;			(*	Aktuellt värde på mätaren	*)
+END_VAR
+VAR CONSTANT
+	Jamnforelsedag		: STRING:='01'; 
+END_VAR
+VAR
+	tidstring			: STRING;
+	StringDag			: STRING;
+	DagLika				: BOOL;
+	Pf_Trig				: R_TRIG;
+	PfTrigger			: R_TRIG;
+	rAktV				: LREAL;
+	rVperPuls			: LREAL;
+	rKorrFakt			: LREAL;
+	rTotalForbrukning	: LREAL;
+	rTotalForbrukning1	: LREAL;
+	rForbrukningForra	: LREAL;
+	rForbrukningManad	: LREAL;
+	ReadTime			: INT;
+	Datum_Tid			: INT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[tidstring :=DT_TO_STRING(ReadTime.Datum_Tid);			(*Hej Hej*)
+StringDag :=MID(tidstring,2,12); 						(*Välj position 12, och 2 höger/vänster inom char string, men frågan är vad som kommer ut från ReadTime.Datum_Tid*)
+
+rAktV:=DINT_TO_LREAL( diAktV);
+rVperPuls:=DINT_TO_LREAL (diVperPuls);
+rKorrFakt:=DINT_TO_LREAL (diKorrFakt);
+
+IF Jamnforelsedag = StringDag THEN  						(*Vad innebär det  dag "01" egentligen?!?*)
+	DagLika:=TRUE;
+ELSE
+	DagLika:=FALSE;
+END_IF
+
+PfTrigger(CLK:=DagLika,); 									(*Kontrollerar om Daglika har blivit hög, och daglika är "01",  skulle tippa på att mätning samlas in en gång i månaden?*)
+IF PfTrigger.Q THEN
+	rForbrukningForra:=rForbrukningManad; 					(* Spara undan värdet för förra månaden*)
+	rTotalForbrukning1:=rTotalForbrukning;	      			(* Sparar undan värdet för månaden eller veckan beroende på hur ofta dag 01 inträffar   *)
+END_IF
+
+Pf_Trig(CLK:= bPuls,);										(*Positiv Flankutvärdering på pulssignalen från givaren*)
+IF Pf_Trig.Q THEN
+	rAktV:=rAktV+rVperPuls;
+	rTotalForbrukning:=rAktV/rKorrFakt;						(*Totalförbrukning för värdet just nu*)
+END_IF
+
+rForbrukningManad:=rTotalForbrukning-rTotalForbrukning1;	(*Beräknar förbrukning för den här månaden*)
+
+(*Spara undan alla värden som  Dubbel INT*)
+
+diAktV:=REAL_TO_DINT (rAktV);
+diTotalForbrukning:=LREAL_TO_DINT (rTotalForbrukning);
+diForbrukningForra:=LREAL_TO_DINT (rForbrukningForra);
+diForbrukningManad:=LREAL_TO_DINT (rForbrukningManad);]]></ST>
+    </Implementation>
+    <LineIds Name="Measurement">
+      <LineId Id="10" Count="31" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

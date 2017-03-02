@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.12">
+  <POU Name="ReadTime" Id="{0bc90ac1-1957-4484-80f9-05ffcc5dad9f}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM ReadTime
+(*Utmaskning av Datum och Tid, används i Tidkanaler, Drifttidsmätnings-, Pulsmätnings funktionsblocken *)
+VAR
+	System_Tid	: NT_GetTime;
+	Trigg		: TON;
+	SysTime		: TIMESTRUCT;		(*	Denna variabel används av vissa funktionsblock som finns under Browik_FB	*)
+	Datum_Tid	: DT; 				(*  Denna variabel används av vissa funktionsblock som finns under Browik_FB    *)
+	Tid			: TOD; 				(*	Denna variabel i display WEBPORT för att visa lokal tid 					*)
+	DayOfweek	: WORD; 			(*	Denna variabel används av vissa funktionsblock som finns under Browik_FB	*)
+	Month		: WORD; 			(*	Denna variabel används av vissa funktionsblock som finns under Browik_FB	*)
+	Day			: WORD;				(*	Denna variabel används av vissa funktionsblock som finns under Browik_FB	*)
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[Trigg(IN:= NOT Trigg.Q , PT:=T#1000MS , Q=> , ET=> );
+System_Tid(START:=Trigg.Q );									(*Läsa in systemklockan vid positiv flank på signalen "Digital Input0"*)
+
+Datum_Tid	:= SYSTEMTIME_TO_DT(System_Tid.TIMESTR);			(*Konvertera systemtid till datum och tid format*)
+DayOfweek	:= System_Tid.TIMESTR.wDayOfWeek;					(*Läser ut veckodag ur sytemtiden*)
+Month 		:= System_Tid.TIMESTR.wMonth;						(*Läder ut aktuell månad*)
+Day  		:= System_Tid.TIMESTR.wDay;							(*Läser ut aktuell dag*)
+SysTime		:= System_Tid.TIMESTR;								(*Läser ut hela TIMESTRUCTen*)
+Tid 		:= DT_TO_TOD(Datum_Tid);							(*Läser ut aktuell tid*)]]></ST>
+    </Implementation>
+    <LineIds Name="ReadTime">
+      <LineId Id="17" Count="7" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>
